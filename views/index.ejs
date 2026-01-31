@@ -314,11 +314,12 @@
     <script src="https://cdn.jsdelivr.net/npm/jsvectormap/dist/maps/world.js"></script>
 
     <script>
-        // --- 1. CONFIGURATION ---
+        // --- CONFIGURATION ---
         const countryCodes = <%- JSON.stringify(Object.keys(countries)) %>;
         let rotationTimer = null;
+        const STALE_REFRESH_MS = 15 * 60 * 1000; // 15 Minutes
 
-        // --- 2. MAP SETUP ---
+        // --- MAP SETUP ---
         const map = new jsVectorMap({
             selector: '#map-container',
             map: 'world',
@@ -332,26 +333,31 @@
             onRegionClick: (e, code) => changeCountry(code)
         });
 
-        // --- 3. INITIALIZATION (Load Settings) ---
+        // --- INITIALIZATION ---
         function initSettings() {
-            // 1. Load View Mode (Grid vs Carousel)
+            // Restore User Settings
             const savedView = localStorage.getItem('viewMode') || 'grid';
             setView(savedView);
 
-            // 2. Load Rotation Interval
             const savedInterval = localStorage.getItem('rotateInterval') || '15';
             document.getElementById('rotateInterval').value = savedInterval;
 
-            // 3. Load Auto-Rotate State
             const isEnabled = localStorage.getItem('autoRotate') === 'true';
             const toggle = document.getElementById('autoRotateToggle');
             if (toggle) {
                 toggle.checked = isEnabled;
                 if (isEnabled) startRotationTimer();
             }
+
+            // Start "Stale Data" Refresh Timer
+            // If the user sits on this page for 15 minutes, force a reload to get new news.
+            setTimeout(() => {
+                console.log("Data is stale (15m elapsed). Refreshing...");
+                window.location.reload();
+            }, STALE_REFRESH_MS);
         }
 
-        // --- 4. AUTO-ROTATE LOGIC ---
+        // --- LOGIC ---
         function toggleAutoRotate() {
             const toggle = document.getElementById('autoRotateToggle');
             const isChecked = toggle.checked;
@@ -364,7 +370,6 @@
         function updateInterval() {
             const val = document.getElementById('rotateInterval').value;
             localStorage.setItem('rotateInterval', val);
-            // Restart timer if running to apply new time immediately
             const toggle = document.getElementById('autoRotateToggle');
             if (toggle.checked) {
                 stopRotationTimer();
@@ -374,10 +379,9 @@
 
         function startRotationTimer() {
             if (rotationTimer) clearInterval(rotationTimer);
-            
             let seconds = parseInt(document.getElementById('rotateInterval').value) || 15;
-            if (seconds < 5) seconds = 5; // Minimum safety
-
+            if (seconds < 5) seconds = 5;
+            
             rotationTimer = setInterval(() => {
                 const current = "<%= currentGeo %>";
                 let next;
@@ -392,15 +396,12 @@
             if (rotationTimer) clearInterval(rotationTimer);
         }
 
-        // --- 5. NAVIGATION & VIEWS ---
         function changeCountry(code) {
             window.location.href = '/?geo=' + code;
         }
 
         function setView(view) {
-            // Save preference
             localStorage.setItem('viewMode', view);
-
             const grid = document.getElementById('view-grid');
             const carousel = document.getElementById('view-carousel');
             const btnGrid = document.getElementById('btn-grid');
@@ -419,7 +420,6 @@
             }
         }
 
-        // Run Init
         initSettings();
     </script>
 </body>
